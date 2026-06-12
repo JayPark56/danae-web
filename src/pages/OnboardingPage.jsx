@@ -1,18 +1,17 @@
-import { useState } from 'react'
-
-// First-launch welcome screen: randomized app name, quote subtitle, Google
-// sign-in (opens YouTube sign-in so the browser session carries Premium
-// into the embedded player), or guest.
+// First-launch welcome screen: trilingual app name stack, quote subtitle,
+// Google sign-in (opens YouTube sign-in so the browser session carries
+// Premium into the embedded player), or guest.
 export default function OnboardingPage({ onComplete }) {
-  // Random per load; useState keeps the pick for the session.
-  const [title] = useState(
-    () => ['다나에.', 'danae.', 'ダナエ.'][Math.floor(Math.random() * 3)]
-  )
-
   return (
     <div className="flex min-h-screen flex-col bg-black px-7 pb-10">
       <div className="flex flex-1 flex-col items-center justify-center">
-        <h1 className="font-p7 text-[52px] text-white">{title}</h1>
+        <h1 className="text-center font-p9 text-[52px] leading-tight text-white">
+          다나에.
+          <br />
+          danae.
+          <br />
+          ダナエ.
+        </h1>
         <p className="mt-3 font-p5 text-[15px] text-white/55">
           사랑해도 혼나지 않는 꿈이었다.
         </p>
