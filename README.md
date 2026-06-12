@@ -27,10 +27,10 @@ npm run dev
 | `VITE_YOUTUBE_API_KEY` | Google Cloud Console → APIs & Services → Credentials (YouTube Data API v3 enabled) |
 | `VITE_EMAILJS_PUBLIC_KEY` | dashboard.emailjs.com → Account → General → Public Key |
 
-EmailJS also needs **Allow EmailJS API for non-browser applications** OFF is
-fine for web (requests come from the browser), but if the account uses
-strict mode you must either disable it or add the site origin to the allowed
-list in the EmailJS dashboard.
+In the EmailJS dashboard, **Allow EmailJS API for non-browser applications**
+can stay OFF — this app sends requests from the browser. If the account
+restricts requests to allowed origins, add the Vercel domain (and
+`http://localhost:5173` for local dev) to the allowed origins list.
 
 ## Deploying to Vercel
 
@@ -42,11 +42,15 @@ list in the EmailJS dashboard.
    - Output directory: `dist`
 4. Under **Settings → Environment Variables**, add
    `VITE_YOUTUBE_API_KEY` and `VITE_EMAILJS_PUBLIC_KEY`.
-5. Deploy. The PWA is installable from the deployed URL (Safari: 공유 →
+5. **Restrict the API key before sharing the URL** — Vite inlines both keys
+   into the public JS bundle, so they are visible to anyone once deployed.
+   In Google Cloud Console → Credentials → the API key, set *Application
+   restrictions* to **HTTP referrers** with your domains
+   (`https://<project>.vercel.app/*` and any custom domain), and *API
+   restrictions* to **YouTube Data API v3** only. The EmailJS public key is
+   designed to be public.
+6. Deploy. The PWA is installable from the deployed URL (Safari: 공유 →
    홈 화면에 추가).
-
-> Tip: in the Google Cloud console, add the Vercel domain as an HTTP
-> referrer restriction on the API key.
 
 ## GitHub
 

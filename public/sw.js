@@ -1,5 +1,9 @@
-// Basic stale-while-revalidate cache for same-origin GET requests.
-const CACHE = 'danae-v1'
+// Cache strategy: network-first for navigations (so a deploy's new
+// index.html — and the hashed asset URLs it references — is picked up on
+// the next load, with the cached copy as the offline fallback), and
+// stale-while-revalidate for other same-origin GETs (hashed assets are
+// immutable, so serving stale is always safe there).
+const CACHE = 'danae-v2'
 
 self.addEventListener('install', () => {
   self.skipWaiting()
@@ -22,6 +26,22 @@ self.addEventListener('fetch', (event) => {
   // and cross-origin media shouldn't be cached here.
   if (url.origin !== location.origin) return
 
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      caches.open(CACHE).then(async (cache) => {
+        try {
+          const response = await fetch(request)
+          if (response.ok) cache.put(request, response.clone())
+          return response
+        } catch {
+          const cached = await cache.match(request)
+          return cached ?? Response.error()
+        }
+      })
+    )
+    return
+  }
+
   event.respondWith(
     caches.open(CACHE).then(async (cache) => {
       const cached = await cache.match(request)
@@ -30,7 +50,7 @@ self.addEventListener('fetch', (event) => {
           if (response.ok) cache.put(request, response.clone())
           return response
         })
-        .catch(() => cached)
+        .catch(() => cached ?? Response.error())
       return cached || network
     })
   )

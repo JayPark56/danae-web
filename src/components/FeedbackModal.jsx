@@ -16,6 +16,10 @@ export default function FeedbackModal({ onClose }) {
       const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        // Bound like iOS's timeoutInterval = 15 — without this, a stalled
+        // connection locks the user in the modal for the browser's full
+        // fetch timeout.
+        signal: AbortSignal.timeout(15000),
         body: JSON.stringify({
           service_id: EMAILJS.serviceID,
           template_id: EMAILJS.templateID,
@@ -34,7 +38,11 @@ export default function FeedbackModal({ onClose }) {
         setFailure(`HTTP ${response.status}: ${body}`)
       }
     } catch (error) {
-      setFailure(String(error?.message ?? error))
+      setFailure(
+        error?.name === 'TimeoutError' || error?.name === 'AbortError'
+          ? '요청 시간이 초과되었습니다'
+          : String(error?.message ?? error)
+      )
     } finally {
       setSubmitting(false)
     }

@@ -48,9 +48,17 @@ export default function PlayerPage({
   const [currentTime, setCurrentTime] = useState(-1)
   const [tracklist, setTracklist] = useState([])
   // Independent toggles owned by the page, which stays mounted across video
-  // transitions — so both settings persist until the player is closed.
+  // transitions — both settings persist while the full player is open and
+  // reset on minimize, mirroring iOS HomeView's fullScreenCover onDismiss.
   const [repeatOne, setRepeatOne] = useState(false)
   const [shuffleOn, setShuffleOn] = useState(false)
+
+  useEffect(() => {
+    if (minimized) {
+      setRepeatOne(false)
+      setShuffleOn(false)
+    }
+  }, [minimized])
 
   // Refs so the single long-lived player's event handlers always see
   // current values instead of stale closures.
@@ -232,6 +240,11 @@ export default function PlayerPage({
       className={`fixed inset-0 z-30 overflow-y-auto bg-black transition-opacity duration-300 ${
         minimized ? 'pointer-events-none opacity-0' : 'opacity-100'
       }`}
+      // inert/aria-hidden take the invisible overlay out of the tab order
+      // and accessibility tree while minimized, without pausing the iframe.
+      // (React 18 needs the empty-string form for the bare inert attribute.)
+      inert={minimized ? '' : undefined}
+      aria-hidden={minimized || undefined}
     >
       <div className="mx-auto max-w-xl px-4 pb-10 pt-3">
         {/* Top bar: back (minimize) left, playback toggles right. */}

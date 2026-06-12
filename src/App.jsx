@@ -5,11 +5,12 @@ import OnboardingPage from './pages/OnboardingPage'
 import PlayerPage from './pages/PlayerPage'
 import { STORAGE_KEYS } from './utils/constants'
 import { dailyPickIndex } from './utils/dailyPick'
+import { safeStorage } from './utils/storage'
 import { fetchAllVideos } from './utils/youtubeService'
 
 export default function App() {
   const [onboarded, setOnboarded] = useState(
-    () => localStorage.getItem(STORAGE_KEYS.onboarded) === '1'
+    () => safeStorage.get(STORAGE_KEYS.onboarded) === '1'
   )
   const [videos, setVideos] = useState([])
   const [loading, setLoading] = useState(true)
@@ -17,14 +18,21 @@ export default function App() {
   const [sortOrder, setSortOrder] = useState('newest')
   // { list, index, minimized } while a video is loaded; the list snapshots
   // the sort order at open time, like the iOS fullScreenCover capture.
+  // (iOS mini-mode advance re-reads the live sort order with a stale index,
+  // which looks accidental — the snapshot is kept for both modes here.)
   const [session, setSession] = useState(null)
   const [miniPlaying, setMiniPlaying] = useState(true)
   const [lastPlayedID, setLastPlayedID] = useState(
-    () => localStorage.getItem(STORAGE_KEYS.lastPlayedVideoID) ?? ''
+    () => safeStorage.get(STORAGE_KEYS.lastPlayedVideoID) ?? ''
   )
   const playerControlsRef = useRef(null)
+  const loadingRef = useRef(false)
 
   async function load() {
+    // Re-entrancy guard (mirrors the iOS `guard !isLoading`): StrictMode's
+    // doubled dev effect and Retry mashing must not crawl the API twice.
+    if (loadingRef.current) return
+    loadingRef.current = true
     setLoading(true)
     setError(null)
     try {
@@ -32,6 +40,7 @@ export default function App() {
     } catch (cause) {
       setError(String(cause?.message ?? cause))
     } finally {
+      loadingRef.current = false
       setLoading(false)
     }
   }
@@ -52,10 +61,10 @@ export default function App() {
     return copy
   }, [videos, sortOrder])
 
-  const dailyPick = useMemo(() => {
-    const index = dailyPickIndex(videos.length)
-    return index >= 0 ? videos[index] : null
-  }, [videos])
+  // Computed every render like the iOS property, so a session left open
+  // past midnight rolls over to the new day's pick on the next update.
+  const pickIndex = dailyPickIndex(videos.length)
+  const dailyPick = pickIndex >= 0 ? videos[pickIndex] : null
 
   const currentVideo = session ? session.list[session.index] : null
 
@@ -71,14 +80,17 @@ export default function App() {
 
   function recordPlayback(video) {
     setLastPlayedID(video.id)
-    localStorage.setItem(STORAGE_KEYS.lastPlayedVideoID, video.id)
+    safeStorage.set(STORAGE_KEYS.lastPlayedVideoID, video.id)
   }
 
   function openVideo(video) {
     const list = sortedVideos
     const index = Math.max(0, list.findIndex((item) => item.id === video.id))
+    // Optimistic only when the loaded video actually changes (which triggers
+    // a load + PLAYING event); re-opening the current, possibly paused video
+    // keeps the honest last-known state.
+    if (list[index].id !== currentVideo?.id) setMiniPlaying(true)
     setSession({ list, index, minimized: false })
-    setMiniPlaying(true)
     recordPlayback(list[index])
   }
 
@@ -86,7 +98,7 @@ export default function App() {
     return (
       <OnboardingPage
         onComplete={() => {
-          localStorage.setItem(STORAGE_KEYS.onboarded, '1')
+          safeStorage.set(STORAGE_KEYS.onboarded, '1')
           setOnboarded(true)
         }}
       />
