@@ -411,6 +411,7 @@ export default function PlayerPage({
                   <TracklistRow
                     key={`${entry.seconds}-${entryIndex}`}
                     entry={entry}
+                    number={`${String(entryIndex + 1).padStart(2, '0')}.`}
                     isActive={entryIndex === activeIndex}
                     isPlaylistTitled={playlistTitled}
                     onSeek={seekTo}

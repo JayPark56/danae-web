@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { splitLabel } from '../utils/descriptionParser'
 
-// One tracklist row. Inactive: single truncated line (timestamp gray 0.5,
-// artist gray 0.9, " - " gray 0.5, title white 0.85). Active: everything in
-// accent yellow (timestamp at 0.75); "Artist - Title" labels stay on one
-// line when they fit and stack artist-over-title when they would clip — the
-// web equivalent of iOS ViewThatFits — while plain labels wrap freely like
-// iOS lineLimit(nil). A hidden measurer keeps the fit decision fresh across
-// webfont swap-in and resizes.
-export default function TracklistRow({ entry, isActive, isPlaylistTitled, onSeek }) {
+// One tracklist row, led by a zero-padded track number ("01.") instead of
+// the timestamp — tapping still seeks to the entry's seconds. Inactive:
+// number gray 0.5, single truncated label line (artist gray 0.9, " - " gray
+// 0.5, title white 0.85). Active: number and label in yellow; "Artist -
+// Title" labels stay on one line when they fit and stack artist-over-title
+// when they would clip — the web equivalent of iOS ViewThatFits — while
+// plain labels wrap freely like iOS lineLimit(nil). A hidden measurer keeps
+// the fit decision fresh across webfont swap-in and resizes.
+export default function TracklistRow({ entry, number, isActive, isPlaylistTitled, onSeek }) {
   const parts = isPlaylistTitled ? splitLabel(entry.label) : null
   const hasParts = parts !== null
   const wrapperRef = useRef(null)
@@ -44,10 +45,10 @@ export default function TracklistRow({ entry, isActive, isPlaylistTitled, onSeek
       <span
         className="min-w-[44px] shrink-0 font-p5 text-[15px]"
         style={{
-          color: isActive ? 'rgba(255, 215, 0, 0.75)' : 'rgba(142, 142, 147, 0.5)',
+          color: isActive ? '#FFD700' : 'rgba(142, 142, 147, 0.5)',
         }}
       >
-        {entry.time}
+        {number}
       </span>
 
       <span ref={wrapperRef} className="relative min-w-0 flex-1 font-p5 text-[15px]">
