@@ -1,3 +1,6 @@
+/* Noto Sans JP Black: Japanese fallback — Paperlogy has no kana glyphs. */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@900&display=swap');
+
 /* Paperlogy — same nine faces the iOS app bundles, served from jsDelivr. */
 @font-face {
   font-family: 'Paperlogy-1Thin';

@@ -10,7 +10,11 @@ export default function OnboardingPage({ onComplete }) {
           <br />
           danae.
           <br />
-          ダナエ.
+          {/* Paperlogy has no kana — the katakana falls through to Noto
+              Sans JP Black while the trailing period stays Paperlogy. */}
+          <span style={{ fontFamily: "'Paperlogy-9Black', 'Noto Sans JP', sans-serif" }}>
+            ダナエ.
+          </span>
         </h1>
         <p className="mt-3 font-p5 text-[15px] text-white/55">
           사랑해도 혼나지 않는 꿈이었다.
