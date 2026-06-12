@@ -98,9 +98,39 @@ export function isPlaylistTitled(title) {
   return title.normalize('NFKC').trim().toLowerCase().startsWith('playlist')
 }
 
-// "Artist - Title" split on the first " - ", like the iOS track rows.
+function makeParts(artist, title) {
+  const trimmedArtist = artist.trim()
+  const trimmedTitle = title.trim()
+  return trimmedArtist && trimmedTitle
+    ? { artist: trimmedArtist, title: trimmedTitle }
+    : null
+}
+
+// "Artist - Title" split at the FIRST separator. Spaced separators are
+// tried first and accept every dash variant (-, –, —, −, －, ー). Unspaced
+// separators (e.g. "あいみょん－ハルノヒ") only accept the unambiguous
+// dashes — bare ASCII "-" lives inside words like K-POP and the katakana
+// long-vowel mark "ー" inside words like スーパー, so those two only count
+// when surrounded by spaces.
+const SPACED_SEPARATOR_RE = /\s[-–—−－ー]\s/
+const UNSPACED_SEPARATOR_RE = /[－–—−]/
+
 export function splitLabel(label) {
-  const index = label.indexOf(' - ')
-  if (index === -1) return null
-  return { artist: label.slice(0, index), title: label.slice(index + 3) }
+  const spaced = SPACED_SEPARATOR_RE.exec(label)
+  if (spaced) {
+    const parts = makeParts(
+      label.slice(0, spaced.index),
+      label.slice(spaced.index + spaced[0].length)
+    )
+    if (parts) return parts
+  }
+  const unspaced = UNSPACED_SEPARATOR_RE.exec(label)
+  if (unspaced) {
+    const parts = makeParts(
+      label.slice(0, unspaced.index),
+      label.slice(unspaced.index + 1)
+    )
+    if (parts) return parts
+  }
+  return null
 }

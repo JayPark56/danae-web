@@ -89,7 +89,12 @@ export default function TracklistRow({ entry, number, isActive, isPlaylistTitled
                 <span className="text-white/85">{parts.title}</span>
               </>
             ) : (
-              <span className="text-white/85">{entry.label}</span>
+              // Playlist-titled rows without a separator are more likely
+              // artist-only than title-only, so render those artist-gray;
+              // non-playlist videos keep iOS's title-white labels.
+              <span className={isPlaylistTitled ? 'text-sysgray/90' : 'text-white/85'}>
+                {entry.label}
+              </span>
             )}
           </span>
         )}
