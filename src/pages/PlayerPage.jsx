@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import QuoteSection from '../components/QuoteSection'
 import TracklistRow from '../components/TracklistRow'
-import { isPlaylistTitled, parseQuote, parseTimestamps } from '../utils/descriptionParser'
+import { isPlaylistTitled, parseQuote, parseTimestamps, splitLabel } from '../utils/descriptionParser'
 import { fetchCommentTimestamps, formatDuration } from '../utils/youtubeService'
 
 // Singleton loader for the YouTube IFrame API.
@@ -48,6 +48,36 @@ export default function PlayerPage({
   // gesture requirement, then playback starts.
   const [showPlayOverlay, setShowPlayOverlay] = useState(false)
   const overlayTimerRef = useRef(null)
+  // Press flash for the prev/next buttons.
+  const [prevPressed, setPrevPressed] = useState(false)
+  const [nextPressed, setNextPressed] = useState(false)
+  // Silent looping AudioContext: best-effort trick to keep the iOS audio
+  // session alive when the PWA goes to background.
+  const audioContextRef = useRef(null)
+
+  function startSilentKeepalive() {
+    if (audioContextRef.current) {
+      audioContextRef.current.resume?.().catch?.(() => {})
+      return
+    }
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext
+      if (!Ctx) return
+      const context = new Ctx()
+      const buffer = context.createBuffer(1, context.sampleRate, context.sampleRate)
+      const source = context.createBufferSource()
+      source.buffer = buffer
+      source.loop = true
+      const gain = context.createGain()
+      gain.gain.value = 0.0001
+      source.connect(gain)
+      gain.connect(context.destination)
+      source.start()
+      audioContextRef.current = context
+    } catch {
+      // Best effort only.
+    }
+  }
 
   // If the player is still unstarted/cued a moment after we asked it to
   // play, autoplay was blocked — surface the tap-to-play overlay. The delay
@@ -165,6 +195,7 @@ export default function PlayerPage({
               setShowPlayOverlay(false)
               setPlaying(true)
               onPlayingChangeRef.current?.(true)
+              startSilentKeepalive()
             } else if (event.data === states.UNSTARTED || event.data === states.CUED) {
               scheduleOverlayCheck()
             } else if (event.data === states.PAUSED) {
@@ -187,6 +218,8 @@ export default function PlayerPage({
       clearTimeout(overlayTimerRef.current)
       playerRef.current?.destroy?.()
       playerRef.current = null
+      audioContextRef.current?.close?.().catch?.(() => {})
+      audioContextRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -264,6 +297,71 @@ export default function PlayerPage({
     const candidates = tracklist.filter((item) => item.seconds < currentTime - 3)
     const target = candidates.length > 0 ? candidates[candidates.length - 1] : null
     seekTo(target ? target.seconds : 0)
+  }
+
+  // Fresh-closure mirrors for the once-registered MediaSession handlers.
+  const nextTrackRef = useRef(() => {})
+  nextTrackRef.current = nextTrack
+  const previousTrackRef = useRef(() => {})
+  previousTrackRef.current = previousTrack
+
+  // Lock-screen / control-center integration. Registered once; every
+  // handler reads through refs so it always sees current state.
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return undefined
+    const session = navigator.mediaSession
+    const handlePrev = () => previousTrackRef.current()
+    const handleNext = () => nextTrackRef.current()
+    const handlers = [
+      ['play', () => playerRef.current?.playVideo()],
+      ['pause', () => playerRef.current?.pauseVideo()],
+      ['previoustrack', handlePrev],
+      ['nexttrack', handleNext],
+      // Lock-screen seek buttons navigate tracks instead of 10s jumps.
+      ['seekbackward', handlePrev],
+      ['seekforward', handleNext],
+    ]
+    for (const [action, handler] of handlers) {
+      try {
+        session.setActionHandler(action, handler)
+      } catch {
+        // Action not supported on this browser — fine.
+      }
+    }
+    return () => {
+      for (const [action] of handlers) {
+        try {
+          session.setActionHandler(action, null)
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }, [])
+
+  // Lock-screen metadata: the active track when known, the video otherwise.
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !('MediaMetadata' in window)) return
+    const active = activeIndex >= 0 ? tracklist[activeIndex] : null
+    const parts = active ? splitLabel(active.label) : null
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: parts?.title ?? active?.label ?? video.title,
+      artist: parts?.artist ?? 'danae',
+      album: video.title,
+      artwork: [{ src: video.thumbnailURL, sizes: '480x360', type: 'image/jpeg' }],
+    })
+  }, [video.title, video.thumbnailURL, activeIndex, tracklist])
+
+  useEffect(() => {
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.playbackState = playing ? 'playing' : 'paused'
+    }
+  }, [playing])
+
+  // 200ms yellow flash on the prev/next buttons.
+  function flashPress(setter) {
+    setter(true)
+    setTimeout(() => setter(false), 200)
   }
 
   const noTracklist = tracklist.length === 0
@@ -344,8 +442,11 @@ export default function PlayerPage({
         {/* Transport: prev / play-pause / next, evenly spaced. */}
         <div className="flex items-center justify-around py-6">
           <button
-            className="flex flex-col items-center gap-1 text-white disabled:opacity-35"
+            className="flex flex-col items-center gap-1 text-white transition-colors duration-200 disabled:opacity-35"
+            style={{ color: prevPressed ? '#FFD700' : undefined }}
             disabled={noTracklist}
+            onMouseDown={() => flashPress(setPrevPressed)}
+            onTouchStart={() => flashPress(setPrevPressed)}
             onClick={previousTrack}
           >
             <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
@@ -379,8 +480,11 @@ export default function PlayerPage({
           </button>
 
           <button
-            className="flex flex-col items-center gap-1 text-white disabled:opacity-35"
+            className="flex flex-col items-center gap-1 text-white transition-colors duration-200 disabled:opacity-35"
+            style={{ color: nextPressed ? '#FFD700' : undefined }}
             disabled={noTracklist}
+            onMouseDown={() => flashPress(setNextPressed)}
+            onTouchStart={() => flashPress(setNextPressed)}
             onClick={nextTrack}
           >
             <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">

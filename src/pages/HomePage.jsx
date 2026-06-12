@@ -202,7 +202,7 @@ export default function HomePage({
         </div>
 
         <section>
-          <p className="mb-3 font-p5 text-[15px] text-white/55">All Videos</p>
+          <p className="mb-3 font-p5 text-[15px] text-white/55">All Playlists</p>
           <div className="grid grid-cols-2 gap-x-3.5 gap-y-4">
             {sortedVideos.map((video) => (
               <VideoCard
