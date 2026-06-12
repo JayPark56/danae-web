@@ -1,49 +1,50 @@
-/* Noto Sans JP Black: Japanese fallback — Paperlogy has no kana glyphs. */
+/* Noto Sans JP Black: Japanese fallback for glyphs Paperlogy lacks. */
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@900&display=swap');
 
-/* Paperlogy — same nine faces the iOS app bundles, served from jsDelivr. */
+/* Paperlogy — the same nine TTFs the iOS app bundles, served locally from
+   /fonts so the build doesn't depend on the CDN subset. */
 @font-face {
   font-family: 'Paperlogy-1Thin';
-  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-1Thin.woff2') format('woff2');
+  src: url('/fonts/Paperlogy-1Thin.ttf') format('truetype');
   font-display: swap;
 }
 @font-face {
   font-family: 'Paperlogy-2ExtraLight';
-  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-2ExtraLight.woff2') format('woff2');
+  src: url('/fonts/Paperlogy-2ExtraLight.ttf') format('truetype');
   font-display: swap;
 }
 @font-face {
   font-family: 'Paperlogy-3Light';
-  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-3Light.woff2') format('woff2');
+  src: url('/fonts/Paperlogy-3Light.ttf') format('truetype');
   font-display: swap;
 }
 @font-face {
   font-family: 'Paperlogy-4Regular';
-  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-4Regular.woff2') format('woff2');
+  src: url('/fonts/Paperlogy-4Regular.ttf') format('truetype');
   font-display: swap;
 }
 @font-face {
   font-family: 'Paperlogy-5Medium';
-  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-5Medium.woff2') format('woff2');
+  src: url('/fonts/Paperlogy-5Medium.ttf') format('truetype');
   font-display: swap;
 }
 @font-face {
   font-family: 'Paperlogy-6SemiBold';
-  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-6SemiBold.woff2') format('woff2');
+  src: url('/fonts/Paperlogy-6SemiBold.ttf') format('truetype');
   font-display: swap;
 }
 @font-face {
   font-family: 'Paperlogy-7Bold';
-  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-7Bold.woff2') format('woff2');
+  src: url('/fonts/Paperlogy-7Bold.ttf') format('truetype');
   font-display: swap;
 }
 @font-face {
   font-family: 'Paperlogy-8ExtraBold';
-  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-8ExtraBold.woff2') format('woff2');
+  src: url('/fonts/Paperlogy-8ExtraBold.ttf') format('truetype');
   font-display: swap;
 }
 @font-face {
   font-family: 'Paperlogy-9Black';
-  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-9Black.woff2') format('woff2');
+  src: url('/fonts/Paperlogy-9Black.ttf') format('truetype');
   font-display: swap;
 }
