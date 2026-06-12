@@ -1,3 +1,4 @@
+// v3 — trilingual title stack (cache-bust marker for the stale-SW deploy).
 // First-launch welcome screen: trilingual app name stack, quote subtitle,
 // Google sign-in (opens YouTube sign-in so the browser session carries
 // Premium into the embedded player), or guest.

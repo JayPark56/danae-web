@@ -44,6 +44,24 @@ export default function PlayerPage({
   const playerRef = useRef(null)
   const [playerReady, setPlayerReady] = useState(false)
   const [playing, setPlaying] = useState(false)
+  // Shown when the browser blocked autoplay: one tap satisfies the user
+  // gesture requirement, then playback starts.
+  const [showPlayOverlay, setShowPlayOverlay] = useState(false)
+  const overlayTimerRef = useRef(null)
+
+  // If the player is still unstarted/cued a moment after we asked it to
+  // play, autoplay was blocked — surface the tap-to-play overlay. The delay
+  // keeps the overlay from flashing during normal load transitions.
+  function scheduleOverlayCheck() {
+    clearTimeout(overlayTimerRef.current)
+    overlayTimerRef.current = setTimeout(() => {
+      const state = playerRef.current?.getPlayerState?.()
+      const states = window.YT?.PlayerState
+      if (state === states?.UNSTARTED || state === -1 || state === states?.CUED) {
+        setShowPlayOverlay(true)
+      }
+    }, 1200)
+  }
   // -1 keeps every row inactive until the first position tick.
   const [currentTime, setCurrentTime] = useState(-1)
   const [tracklist, setTracklist] = useState([])
@@ -125,18 +143,30 @@ export default function PlayerPage({
         videoId: video.id,
         playerVars: {
           autoplay: 1,
+          mute: 0,
           playsinline: 1,
           rel: 0,
           modestbranding: 1,
           controls: 0,
         },
         events: {
-          onReady: () => setPlayerReady(true),
+          onReady: (event) => {
+            setPlayerReady(true)
+            // Explicit start in case the autoplay parameter alone is
+            // ignored; if the browser blocks this too, the overlay check
+            // catches it.
+            event.target.playVideo()
+            scheduleOverlayCheck()
+          },
           onStateChange: (event) => {
             const states = window.YT.PlayerState
             if (event.data === states.PLAYING) {
+              clearTimeout(overlayTimerRef.current)
+              setShowPlayOverlay(false)
               setPlaying(true)
               onPlayingChangeRef.current?.(true)
+            } else if (event.data === states.UNSTARTED || event.data === states.CUED) {
+              scheduleOverlayCheck()
             } else if (event.data === states.PAUSED) {
               setPlaying(false)
               onPlayingChangeRef.current?.(false)
@@ -154,6 +184,7 @@ export default function PlayerPage({
     })
     return () => {
       disposed = true
+      clearTimeout(overlayTimerRef.current)
       playerRef.current?.destroy?.()
       playerRef.current = null
     }
@@ -168,7 +199,9 @@ export default function PlayerPage({
     if (lastLoadedRef.current !== video.id) {
       lastLoadedRef.current = video.id
       playerRef.current?.loadVideoById(video.id)
+      scheduleOverlayCheck()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [video.id, playerReady])
 
   // 1s position tick for the active-track highlight.
@@ -290,6 +323,21 @@ export default function PlayerPage({
         <div className="overflow-hidden rounded-2xl bg-[#111111]">
           <div className="relative aspect-video w-full">
             <div ref={containerRef} className="absolute inset-0 h-full w-full" />
+            {showPlayOverlay && (
+              <button
+                className="absolute inset-0 z-10 flex items-center justify-center bg-black/50"
+                aria-label="재생"
+                onClick={() => {
+                  playerRef.current?.playVideo()
+                  setShowPlayOverlay(false)
+                }}
+              >
+                <svg width="72" height="72" viewBox="0 0 72 72" fill="none" stroke="white" strokeWidth="2">
+                  <circle cx="36" cy="36" r="33" fill="rgba(0,0,0,0.55)" />
+                  <path d="M29 23.5v25l19.5-12.5z" fill="white" stroke="none" />
+                </svg>
+              </button>
+            )}
           </div>
         </div>
 

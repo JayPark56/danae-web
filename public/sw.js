@@ -3,7 +3,7 @@
 // the next load, with the cached copy as the offline fallback), and
 // stale-while-revalidate for other same-origin GETs (hashed assets are
 // immutable, so serving stale is always safe there).
-const CACHE = 'danae-v2'
+const CACHE = 'danae-v3'
 
 self.addEventListener('install', () => {
   self.skipWaiting()
