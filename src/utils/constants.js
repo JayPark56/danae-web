@@ -14,4 +14,7 @@ export const EMAILJS = {
 export const STORAGE_KEYS = {
   onboarded: 'danae.hasCompletedOnboarding',
   lastPlayedVideoID: 'danae.lastPlayedVideoID',
+  // '1' when the user took the Google sign-in path (we can't read YouTube's
+  // cross-origin auth cookie, so this flag is the app's login state).
+  signedIn: 'danae.signedIn',
 }

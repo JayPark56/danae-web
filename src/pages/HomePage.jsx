@@ -5,11 +5,51 @@ import { isNew } from '../utils/youtubeService'
 
 const TITLES = ['다나에.', 'danae.', 'ダナエ.']
 
+// Dark confirmation dialog matching the app design: message + 예/아니요.
+function ConfirmDialog({ message, onYes, onNo }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-8" onClick={onNo}>
+      <div
+        className="w-full max-w-[320px] rounded-2xl bg-[#111111] p-5"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <p className="text-center font-p5 text-[15px] leading-relaxed text-white">{message}</p>
+        <div className="mt-5 flex gap-2.5">
+          <button
+            className="flex-1 rounded-xl bg-white py-2.5 font-p7 text-[15px] text-black"
+            onClick={onYes}
+          >
+            예
+          </button>
+          <button
+            className="flex-1 rounded-xl bg-white/10 py-2.5 font-p5 text-[15px] text-white"
+            onClick={onNo}
+          >
+            아니요
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Person icon with a +/- badge for the login/logout button.
+function PersonIcon({ minus }) {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <circle cx="10" cy="8" r="4" />
+      <path d="M3 20c0-3.3 3.1-6 7-6s7 2.7 7 6" />
+      <path d="M16.5 8.5h5" />
+      {!minus && <path d="M19 6v5" />}
+    </svg>
+  )
+}
+
 // iOS text-selection-style highlighted title: selection blue at 0.4, corner
 // handle dots, and subtle dark fades on both edges.
 function SelectionTitle({ text }) {
   return (
-    <div className="flex justify-end pt-3">
+    <div className="flex justify-end">
       <div className="relative bg-selection/40 px-1.5 py-[3px]">
         <span
           className="absolute inset-y-0 left-0 w-2"
@@ -41,10 +81,15 @@ export default function HomePage({
   onRetry,
   onSelect,
   miniVisible,
+  signedIn,
+  onSignIn,
+  onSignOut,
 }) {
   // Random per load; useState keeps the pick for the session.
   const [title] = useState(() => TITLES[Math.floor(Math.random() * TITLES.length)])
   const [showFeedback, setShowFeedback] = useState(false)
+  // null | 'login' | 'logout'
+  const [confirm, setConfirm] = useState(null)
 
   const newBadgeIDs = useMemo(
     () => new Set(videos.filter(isNew).map((video) => video.id)),
@@ -78,7 +123,17 @@ export default function HomePage({
       className="mx-auto min-h-screen max-w-xl bg-black px-4"
       style={{ paddingBottom: miniVisible ? 104 : 32 }}
     >
-      <SelectionTitle text={title} />
+      <div className="flex items-start justify-between gap-3 pt-3">
+        {/* Same compact circle as the player's repeat/shuffle toggles. */}
+        <button
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-white/70"
+          aria-label={signedIn ? '로그아웃' : '로그인'}
+          onClick={() => setConfirm(signedIn ? 'logout' : 'login')}
+        >
+          <PersonIcon minus={signedIn} />
+        </button>
+        <SelectionTitle text={title} />
+      </div>
 
       <div className="mt-6 flex flex-col gap-6">
         {dailyPick && (
@@ -169,6 +224,28 @@ export default function HomePage({
       </div>
 
       {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
+
+      {confirm === 'login' && (
+        <ConfirmDialog
+          message="구글 아이디로 로그인하시겠습니까?"
+          onYes={() => {
+            window.open('https://www.youtube.com/signin', '_blank', 'noopener')
+            onSignIn()
+            setConfirm(null)
+          }}
+          onNo={() => setConfirm(null)}
+        />
+      )}
+      {confirm === 'logout' && (
+        <ConfirmDialog
+          message="로그아웃해서 게스트 상태로 이용하시겠습니까?"
+          onYes={() => {
+            setConfirm(null)
+            onSignOut()
+          }}
+          onNo={() => setConfirm(null)}
+        />
+      )}
     </div>
   )
 }

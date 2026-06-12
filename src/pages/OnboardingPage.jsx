@@ -27,14 +27,14 @@ export default function OnboardingPage({ onComplete }) {
           className="w-full rounded-2xl bg-white py-3.5 font-p7 text-[17px] text-black"
           onClick={() => {
             window.open('https://www.youtube.com/signin', '_blank', 'noopener')
-            onComplete()
+            onComplete(true)
           }}
         >
           Sign in with Google
         </button>
         <button
           className="w-full rounded-2xl border border-white/25 py-3.5 font-p7 text-[17px] text-white"
-          onClick={onComplete}
+          onClick={() => onComplete(false)}
         >
           Continue as Guest
         </button>

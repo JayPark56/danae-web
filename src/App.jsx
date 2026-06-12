@@ -12,6 +12,9 @@ export default function App() {
   const [onboarded, setOnboarded] = useState(
     () => safeStorage.get(STORAGE_KEYS.onboarded) === '1'
   )
+  const [signedIn, setSignedIn] = useState(
+    () => safeStorage.get(STORAGE_KEYS.signedIn) === '1'
+  )
   const [videos, setVideos] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -97,8 +100,12 @@ export default function App() {
   if (!onboarded) {
     return (
       <OnboardingPage
-        onComplete={() => {
+        onComplete={(choseSignIn) => {
           safeStorage.set(STORAGE_KEYS.onboarded, '1')
+          if (choseSignIn) {
+            safeStorage.set(STORAGE_KEYS.signedIn, '1')
+            setSignedIn(true)
+          }
           setOnboarded(true)
         }}
       />
@@ -119,6 +126,15 @@ export default function App() {
         onRetry={load}
         onSelect={openVideo}
         miniVisible={Boolean(session?.minimized)}
+        signedIn={signedIn}
+        onSignIn={() => {
+          safeStorage.set(STORAGE_KEYS.signedIn, '1')
+          setSignedIn(true)
+        }}
+        onSignOut={() => {
+          safeStorage.set(STORAGE_KEYS.signedIn, '0')
+          window.location.reload()
+        }}
       />
 
       {session && (
