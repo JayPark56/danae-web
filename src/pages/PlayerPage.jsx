@@ -4,6 +4,34 @@ import TracklistRow from '../components/TracklistRow'
 import { isPlaylistTitled, parseQuote, parseTimestamps, splitLabel } from '../utils/descriptionParser'
 import { fetchCommentTimestamps, formatDuration } from '../utils/youtubeService'
 
+// 1s of programmatically generated silence as a WAV blob URL — the hidden
+// looping <audio> element this feeds is what convinces iOS to keep the
+// app's audio session alive in the background (an iframe alone cannot).
+function createSilentWavURL() {
+  const sampleRate = 8000
+  const samples = sampleRate // 1 second
+  const buffer = new ArrayBuffer(44 + samples * 2)
+  const view = new DataView(buffer)
+  const writeString = (offset, text) => {
+    for (let i = 0; i < text.length; i += 1) view.setUint8(offset + i, text.charCodeAt(i))
+  }
+  writeString(0, 'RIFF')
+  view.setUint32(4, 36 + samples * 2, true)
+  writeString(8, 'WAVE')
+  writeString(12, 'fmt ')
+  view.setUint32(16, 16, true)
+  view.setUint16(20, 1, true) // PCM
+  view.setUint16(22, 1, true) // mono
+  view.setUint32(24, sampleRate, true)
+  view.setUint32(28, sampleRate * 2, true)
+  view.setUint16(32, 2, true)
+  view.setUint16(34, 16, true)
+  writeString(36, 'data')
+  view.setUint32(40, samples * 2, true)
+  // Sample bytes stay zeroed — true silence.
+  return URL.createObjectURL(new Blob([buffer], { type: 'audio/wav' }))
+}
+
 // Singleton loader for the YouTube IFrame API.
 let apiPromise = null
 function loadYouTubeAPI() {
@@ -48,9 +76,13 @@ export default function PlayerPage({
   // gesture requirement, then playback starts.
   const [showPlayOverlay, setShowPlayOverlay] = useState(false)
   const overlayTimerRef = useRef(null)
-  // Press flash for the prev/next buttons.
+  // Press flash for the transport buttons.
   const [prevPressed, setPrevPressed] = useState(false)
   const [nextPressed, setNextPressed] = useState(false)
+  const [playPressed, setPlayPressed] = useState(false)
+  // Hidden native silent-audio loop, synced with the iframe's playback.
+  const silentAudioRef = useRef(null)
+  const playingRef = useRef(false)
   // Silent looping AudioContext: best-effort trick to keep the iOS audio
   // session alive when the PWA goes to background.
   const audioContextRef = useRef(null)
@@ -194,13 +226,17 @@ export default function PlayerPage({
               clearTimeout(overlayTimerRef.current)
               setShowPlayOverlay(false)
               setPlaying(true)
+              playingRef.current = true
               onPlayingChangeRef.current?.(true)
               startSilentKeepalive()
+              silentAudioRef.current?.play?.().catch(() => {})
             } else if (event.data === states.UNSTARTED || event.data === states.CUED) {
               scheduleOverlayCheck()
             } else if (event.data === states.PAUSED) {
               setPlaying(false)
+              playingRef.current = false
               onPlayingChangeRef.current?.(false)
+              silentAudioRef.current?.pause?.()
             } else if (event.data === states.ENDED) {
               if (repeatRef.current) {
                 event.target.seekTo(0, true)
@@ -305,6 +341,37 @@ export default function PlayerPage({
   const previousTrackRef = useRef(() => {})
   previousTrackRef.current = previousTrack
 
+  // Wire the hidden silent <audio> loop: programmatic WAV blob source plus
+  // the iOS-specific inline/AirPlay attributes React doesn't pass through.
+  useEffect(() => {
+    const element = silentAudioRef.current
+    if (!element) return undefined
+    const url = createSilentWavURL()
+    element.src = url
+    element.loop = true
+    element.volume = 0.01
+    element.setAttribute('playsinline', '')
+    element.setAttribute('webkit-playsinline', '')
+    element.setAttribute('x-webkit-airplay', 'deny')
+    return () => {
+      element.pause()
+      URL.revokeObjectURL(url)
+    }
+  }, [])
+
+  // When iOS hides the page mid-playback, immediately poke the audio
+  // session back awake — this is the moment the suspension happens.
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden' && playingRef.current) {
+        audioContextRef.current?.resume?.().catch?.(() => {})
+        silentAudioRef.current?.play?.().catch(() => {})
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
+  }, [])
+
   // Lock-screen / control-center integration. Registered once; every
   // handler reads through refs so it always sees current state.
   useEffect(() => {
@@ -377,6 +444,10 @@ export default function PlayerPage({
       inert={minimized ? '' : undefined}
       aria-hidden={minimized || undefined}
     >
+      {/* Hidden native audio: keeps the iOS audio session alive while the
+          iframe plays (configured imperatively in the effect above). */}
+      <audio ref={silentAudioRef} className="hidden" />
+
       <div className="mx-auto max-w-xl px-4 pb-10 pt-3">
         {/* Top bar: back (minimize) left, playback toggles right. */}
         <div className="mb-3 flex items-center justify-between">
@@ -457,8 +528,11 @@ export default function PlayerPage({
           </button>
 
           <button
-            className="-mt-1.5 text-white"
+            className="-mt-1.5 text-white transition-colors duration-200"
+            style={{ color: playPressed ? '#FFD700' : undefined }}
             aria-label={playing ? 'Pause' : 'Play'}
+            onMouseDown={() => flashPress(setPlayPressed)}
+            onTouchStart={() => flashPress(setPlayPressed)}
             onClick={() => {
               const player = playerRef.current
               if (!player) return
